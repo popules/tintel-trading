@@ -1,0 +1,29 @@
+name: api-ci
+on:
+  push:
+    paths:
+      - 'api/**'
+  pull_request:
+    paths:
+      - 'api/**'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install
+        run: |
+          cd api
+          pip install -e .
+          pip install ruff bandit pytest
+      - name: Lint
+        run: |
+          cd api
+          ruff check .
+          bandit -r app -x tests
+      - name: Tests
+        run: |
+          cd api
+          pytest -q

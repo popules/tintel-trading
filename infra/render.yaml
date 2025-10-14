@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: tintel-api
+    env: python
+    rootDir: api
+    plan: free
+    buildCommand: pip install -e . && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: ${DATABASE_URL}
+      - key: FINNHUB_API_KEY
+        value: ${FINNHUB_API_KEY}
+      - key: NEWSAPI_KEY
+        value: ${NEWSAPI_KEY}
+      - key: ALLOWED_ORIGINS
+        value: https://tintel.se,http://localhost:3000
+cronJobs:
+  - name: etl-intraday
+    schedule: "*/15 * * * 1-5"
+    command: "python -m app.scripts.etl_intraday"
+    service: tintel-api
+  - name: etl-nightly
+    schedule: "0 2 * * *"
+    command: "python -m app.scripts.etl_nightly"
+    service: tintel-api

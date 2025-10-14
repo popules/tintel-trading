@@ -1,0 +1,24 @@
+name: frontend-ci
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - 'packages/shared/**'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'packages/shared/**'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: 9 }
+      - name: Install deps
+        run: |
+          cd packages/shared && pnpm i && pnpm build
+          cd ../../frontend && pnpm i
+      - name: Typecheck & Build
+        run: |
+          cd frontend && pnpm typecheck && pnpm build
