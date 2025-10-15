@@ -1,19 +1,25 @@
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
-export async function getScreener({ speculation=false, limit=20 } = {}) {
-  const r = await fetch(`${BASE}/screener?speculation=${speculation}&limit=${limit}`, { next: { revalidate: 60 } });
-  if (!r.ok) throw new Error("screener failed");
+export async function getScreener(params?: { exchange?: "US" | "ST"; limit?: number }) {
+  const u = new URL(`${BASE}/screener`);
+  if (params?.exchange) u.searchParams.set("exchange", params.exchange);
+  if (params?.limit) u.searchParams.set("limit", String(params.limit));
+  const r = await fetch(u.toString(), { cache: "no-store" });
+  if (!r.ok) throw new Error(`screener failed: ${r.status}`);
   return r.json();
 }
 
 export async function getTicker(symbol: string) {
-  const r = await fetch(`${BASE}/ticker/${symbol}`, { cache: "no-store" });
-  if (!r.ok) throw new Error("ticker failed");
+  const r = await fetch(`${BASE}/ticker/${encodeURIComponent(symbol)}`, { cache: "no-store" });
+  if (!r.ok) throw new Error(`ticker failed: ${r.status}`);
   return r.json();
 }
 
-export async function getWeekly() {
-  const r = await fetch(`${BASE}/weekly`, { next: { revalidate: 300 } });
-  if (!r.ok) throw new Error("weekly failed");
+export async function searchStocks(q: string, market: "ALL" | "US" | "ST" = "ALL") {
+  const u = new URL(`${BASE}/search`);
+  u.searchParams.set("q", q);
+  u.searchParams.set("market", market);
+  const r = await fetch(u.toString(), { cache: "no-store" });
+  if (!r.ok) throw new Error(`search failed: ${r.status}`);
   return r.json();
 }

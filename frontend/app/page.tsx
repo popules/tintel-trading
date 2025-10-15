@@ -1,52 +1,113 @@
 "use client";
+
 import { useEffect, useState } from "react";
-import { getScreener } from "@/lib/api";
 import Card from "@/components/Card";
 import Table from "@/components/Table";
-import Toggle from "@/components/Toggle";
-import FactorTooltip from "@/components/FactorTooltip";
 
-export default function Dashboard() {
-  const [spec, setSpec] = useState(false);
-  const [data, setData] = useState<{top:any[];speculation?:any[]}>({top:[]});
+export default function Home() {
+  const [data, setData] = useState<any[]>([]);
+  const [exchange, setExchange] = useState("US");
+  const [query, setQuery] = useState("");
+  const [filtered, setFiltered] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // För text i rubrik beroende på börs
+  const formatExchange = (ex: string) =>
+    ex === "ST" ? "🇸🇪 Svenska marknaden" : "🇺🇸 Amerikanska marknaden";
+
+  // Hämta data från API
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/screener?exchange=${exchange}&limit=20`
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setData(json.top || []);
+      setFiltered(json.top || []);
+    } catch (err: any) {
+      console.error(err);
+      setError("Kunde inte hämta data från API");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Kör vid laddning eller när börs ändras
   useEffect(() => {
-    getScreener({ speculation: spec, limit: 20 }).then(setData).catch(() => setData({top:[]}));
-  }, [spec]);
+    fetchData();
+  }, [exchange]);
+
+  // Filtrering för sök
+  useEffect(() => {
+    if (!query) {
+      setFiltered(data);
+    } else {
+      const q = query.toLowerCase();
+      setFiltered(
+        data.filter(
+          (s) =>
+            s.symbol.toLowerCase().includes(q) ||
+            (s.name && s.name.toLowerCase().includes(q))
+        )
+      );
+    }
+  }, [query, data]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">top setups</h1>
-        <Toggle checked={spec} onChange={setSpec} label="speculation mode" />
+    <main className="p-6 bg-neutral-950 min-h-screen text-neutral-100">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-neutral-100">
+          se <span className="text-green-400">tintel</span>{" "}
+          <span className="text-sm text-neutral-400">
+            trader intelligence
+          </span>
+          <br />
+          <span className="text-xs text-neutral-500">
+            Top 20 – högst Tintel-score just nu ({formatExchange(exchange)}).
+          </span>
+        </h2>
+
+        <div className="flex items-center gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Sök aktie"
+            className="px-3 py-2 rounded-lg bg-neutral-900 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none border border-neutral-800 w-56"
+          />
+          <select
+            value={exchange}
+            onChange={(e) => setExchange(e.target.value)}
+            className="bg-neutral-900 border border-neutral-800 rounded-lg text-sm p-2"
+          >
+            <option value="US">🇺🇸 US</option>
+            <option value="ST">🇸🇪 ST</option>
+          </select>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {data.top.slice(0, 12).map((t) => (
-          <Card key={t.symbol}>
-            <div className="flex items-center justify-between">
-              <div>
-                <a className="text-lg font-semibold hover:text-brand" href={`/ticker/${t.symbol}`}>{t.symbol}</a>
-                <div className="text-mute text-sm">{t.name}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-xl">${t.price?.toFixed(2)}</div>
-                <div className="text-mute text-xs">AI {t.ai_score}</div>
-              </div>
-            </div>
-            <FactorTooltip factors={t.factors} why={t.why_summary} />
-          </Card>
-        ))}
-      </div>
+      {loading && <div className="text-neutral-400">Laddar data...</div>}
+      {error && <div className="text-red-500">{error}</div>}
 
-      <Table rows={data.top} title="Top 20" />
-
-      {spec && data.speculation && (
+      {!loading && !error && (
         <>
-          <h2 className="text-xl mt-8">speculation (risk: HIGH)</h2>
-          <Table rows={data.speculation} title="Speculation" />
+          {/* Cards – top 10 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.slice(0, 10).map((stock) => (
+              <Card key={stock.symbol} stock={stock} />
+            ))}
+          </div>
+
+          {/* Table – alla */}
+          <h3 className="text-neutral-400 mt-6 mb-2">
+            {exchange === "ST" ? "🇸🇪" : "🇺🇸"} Top 20
+          </h3>
+          <Table data={filtered} />
         </>
       )}
-    </div>
+    </main>
   );
 }

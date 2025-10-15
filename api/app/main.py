@@ -1,19 +1,27 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .config import settings
-from .routers import health, screener, ticker, weekly
 
-app = FastAPI(title="tintel-api", version="0.1.0")
+from .routers import health, screener, ticker, weekly, search
 
+app = FastAPI(title="Tintel API")
+
+# === CORS ===
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# === Routers ===
 app.include_router(health.router)
-app.include_router(screener.router, prefix="")
-app.include_router(ticker.router, prefix="")
-app.include_router(weekly.router, prefix="")
+app.include_router(screener.router)
+app.include_router(ticker.router)
+app.include_router(weekly.router)
+app.include_router(search.router)
+
+
+@app.get("/")
+def root():
+    return {"message": "Tintel backend running"}

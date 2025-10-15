@@ -1,33 +1,40 @@
-import Link from "next/link";
+"use client";
 
-export default function Table({ rows, title }: { rows: any[]; title?: string }) {
+import React from "react";
+
+export default function Table({ data }: { data: any[] }) {
+  const getColor = (score: number) => {
+    if (score >= 80) return "text-green-400";
+    if (score >= 65) return "text-yellow-400";
+    return "text-red-400";
+  };
+
   return (
-    <div className="bg-card/60 rounded-2xl border border-white/5 overflow-hidden">
-      {title && <div className="px-4 py-2 border-b border-white/5 text-sm text-mute">{title}</div>}
-      <table className="w-full text-sm">
-        <thead className="text-left text-mute">
-          <tr>
-            <th className="px-4 py-2">Symbol</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>AI</th>
-            <th>Mom</th>
-            <th>Qual</th>
-            <th>Cat</th>
-            <th>Val</th>
+    <div className="mt-6 bg-neutral-900 rounded-2xl p-3">
+      <table className="min-w-full text-sm text-left text-neutral-300">
+        <thead>
+          <tr className="border-b border-neutral-700">
+            <th className="py-2">Rank</th>
+            <th className="py-2">Symbol</th>
+            <th className="py-2">Name</th>
+            <th className="py-2 text-right">Price</th>
+            <th className="py-2 text-right">AI</th>
+            <th className="py-2">Why</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.symbol} className="hover:bg-white/5">
-              <td className="px-4 py-2 font-semibold"><Link href={`/ticker/${r.symbol}`}>{r.symbol}</Link></td>
-              <td>{r.name}</td>
-              <td>${r.price?.toFixed?.(2) ?? r.price}</td>
-              <td>{r.ai_score}</td>
-              <td>{(r.factors?.mom * 100).toFixed?.(0) || "—"}</td>
-              <td>{(r.factors?.qual * 100).toFixed?.(0) || "—"}</td>
-              <td>{(r.factors?.cat * 100).toFixed?.(0) || "—"}</td>
-              <td>{(r.factors?.val * 100).toFixed?.(0) || "—"}</td>
+          {data.map((s) => (
+            <tr key={s.symbol} className="border-b border-neutral-800 hover:bg-neutral-800">
+              <td className="py-2">{s.rank}</td>
+              <td className="py-2">{s.flag} {s.symbol}</td>
+              <td className="py-2">{s.name}</td>
+              <td className="py-2 text-right">
+                {s.currency}{s.price ? s.price.toFixed(2) : "—"}
+              </td>
+              <td className={`py-2 text-right font-semibold ${getColor(s.ai_score)}`}>
+                {s.ai_score}
+              </td>
+              <td className="py-2">{s.why_summary}</td>
             </tr>
           ))}
         </tbody>

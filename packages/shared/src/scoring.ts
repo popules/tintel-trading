@@ -1,47 +1,33 @@
-export const WEIGHTS = {
-  momentum: 0.30,
-  quality: 0.30,
-  catalysts: 0.25,
-  valuation: 0.15
-} as const;
+export function fairEVSales(sector: string | null | undefined, yoy: number | null | undefined) {
+  const g = (yoy ?? 0);
+  let lo = 1.0, hi = 2.0;
+  if (g < 0)        { lo = 0.8; hi = 1.2; }
+  else if (g < 0.1) { lo = 1.0; hi = 1.8; }
+  else if (g < 0.3) { lo = 1.5; hi = 2.5; }
+  else              { lo = 2.0; hi = 3.5; }
 
-export function clamp01(x: number | null | undefined): number {
-  if (x == null || Number.isNaN(x)) return 0;
-  return Math.max(0, Math.min(1, x));
+  const s = (sector || "").toLowerCase();
+  let mult = 1.0;
+  if (/(software|ai|saas)/.test(s)) mult = 1.2;
+  if (/(energy|materials|mining)/.test(s)) mult = 0.8;
+
+  return { lo: +(lo*mult).toFixed(2), hi: +(hi*mult).toFixed(2) };
 }
 
-export function compute_ai_score(f: {
-  momentum?: number | null;
-  quality?: number | null;
-  catalysts?: number | null;
-  valuation?: number | null;
-}) {
-  const m = clamp01(f.momentum);
-  const q = clamp01(f.quality);
-  const c = clamp01(f.catalysts);
-  const v = clamp01(f.valuation);
-
-  const score01 =
-    WEIGHTS.momentum * m +
-    WEIGHTS.quality * q +
-    WEIGHTS.catalysts * c +
-    WEIGHTS.valuation * v;
-
-  const score100 = Math.round(score01 * 100);
-
-  const why = [
-    m > 0.7 ? "momentum hot" : m > 0.5 ? "momentum building" : null,
-    q > 0.7 ? "solid quality" : q > 0.5 ? "improving quality" : null,
-    c > 0.6 ? "fresh catalysts" : null,
-    v > 0.7 ? "undervalued" : null
-  ]
-    .filter(Boolean)
-    .slice(0, 3)
-    .join(" · ") || "balanced setup";
-
-  return {
-    score: score100,
-    factors: { mom: m, qual: q, cat: c, val: v },
-    why_summary: why.slice(0, 140)
-  };
+export function fairPriceFromEVS(
+  evSalesCur: number | null | undefined,
+  mcap: number | null | undefined,
+  price: number | null | undefined,
+  sector: string | null | undefined,
+  yoy: number | null | undefined
+) {
+  if (!evSalesCur || !mcap || !price) return null;
+  const band = fairEVSales(sector, yoy);
+  const mid = (band.lo + band.hi) / 2;
+  // Antag EV ≈ Market Cap för penny names (skuld/kassa ofta okänd) => price scales med EV/Sales
+  const fairPriceMid = +(price * (mid / evSalesCur)).toFixed(2);
+  const fairPriceLo  = +(price * (band.lo / evSalesCur)).toFixed(2);
+  const fairPriceHi  = +(price * (band.hi / evSalesCur)).toFixed(2);
+  const upsideMid = +(((fairPriceMid / price) - 1) * 100).toFixed(0);
+  return { band, fairPriceLo, fairPriceMid, fairPriceHi, upsideMid };
 }
